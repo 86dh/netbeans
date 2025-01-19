@@ -671,8 +671,8 @@ public class InstanceDataObject extends MultiDataObject implements InstanceCooki
         }
     }
 
-    private Lookup.Result cookieResult = null;
-    private Lookup.Result nodeResult = null;
+    private Lookup.Result<Node.Cookie> cookieResult = null;
+    private Lookup.Result<InstanceCookie> nodeResult = null;
     private Lookup cookiesLkp = null;
     private LookupListener cookiesLsnr = null;
     private LookupListener nodeLsnr = null;
@@ -1037,11 +1037,11 @@ public class InstanceDataObject extends MultiDataObject implements InstanceCooki
         return super.handleCreateFromTemplate(df, name);
     }
 
-    /* Copy a service sanely. For settings and serializable beans, special
+    /** Copy a service sanely. For settings and serializable beans, special
      * methods are used to write out the resulting files, and the name to
      * use is taken from the *display name* of the current file, as this is
      * what the user is accustomed to seeing (for ServiceType's especially).
-     * @see <a href="http://www.netbeans.org/issues/show_bug.cgi?id=16278">Issue #16278</a>
+     * @see <a href="https://bz.apache.org/netbeans/show_bug.cgi?id=16278">Issue #16278</a>
      */
     @Override
     protected DataObject handleCopy(DataFolder df) throws IOException {

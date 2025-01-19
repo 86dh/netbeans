@@ -49,8 +49,10 @@ import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTaskImpl;
 import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.code.Preview;
 import com.sun.tools.javac.code.Scope.NamedImportScope;
 import com.sun.tools.javac.code.Scope.StarImportScope;
+import com.sun.tools.javac.code.Source;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.*;
 import com.sun.tools.javac.code.Type;
@@ -60,6 +62,9 @@ import com.sun.tools.javac.comp.Check;
 import com.sun.tools.javac.model.JavacElements;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.util.Context;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Predicate;
 import javax.lang.model.util.ElementScanner14;
 
@@ -85,6 +90,7 @@ import org.netbeans.api.java.source.matching.Occurrence;
 import org.netbeans.api.java.source.matching.Pattern;
 import org.netbeans.api.lexer.TokenHierarchy;
 import org.netbeans.api.lexer.TokenSequence;
+import org.netbeans.lib.nbjavac.services.NBNames;
 import org.netbeans.modules.java.preprocessorbridge.spi.ImportProcessor;
 import org.netbeans.modules.java.source.ElementHandleAccessor;
 import org.netbeans.modules.java.source.ElementUtils;
@@ -108,6 +114,7 @@ import org.netbeans.modules.parsing.api.UserTask;
 import org.netbeans.modules.parsing.api.indexing.IndexingManager;
 import org.netbeans.modules.parsing.spi.indexing.support.QuerySupport;
 import org.netbeans.spi.java.classpath.support.ClassPathSupport;
+import org.netbeans.spi.project.NestedClass;
 
 import org.openide.filesystems.FileObject;
 import org.openide.filesystems.FileUtil;
@@ -484,7 +491,7 @@ public class SourceUtils {
      * @return the defining {@link FileObject} or null if it cannot be
      * found
      *
-     * @deprecated use {@link getFile(ElementHandle, ClasspathInfo)}
+     * @deprecated use {@link #getFile(ElementHandle, ClasspathInfo)}
      */
     @Deprecated
     public static FileObject getFile (Element element, final ClasspathInfo cpInfo) {
@@ -628,7 +635,9 @@ public class SourceUtils {
     private static FileObject findMatchingChild(String sourceFileName, Collection<FileObject> folders, boolean caseSensitive) {
         final Match matchSet = caseSensitive ? new CaseSensitiveMatch(sourceFileName) : new CaseInsensitiveMatch(sourceFileName);
         for (FileObject folder : folders) {
-            for (FileObject child : folder.getChildren()) {
+            FileObject[] children = folder.getChildren();
+            Arrays.sort(children, Comparator.comparing(FileObject::getNameExt)); // for determinism
+            for (FileObject child : children) {
                 if (matchSet.apply(child)) {
                     return child;
                 }
@@ -684,6 +693,9 @@ public class SourceUtils {
         }
 
         final boolean apply(final FileObject fo) {
+            if (fo.isFolder()) {
+                return false;
+            }
             if (fo.getNameExt().equals(name)) {
                 return true;
             }
@@ -1018,30 +1030,80 @@ public class SourceUtils {
      * @return true when the method is a main method
      */
     public static boolean isMainMethod (final ExecutableElement method) {
+        if (!mainCandidate(method)) {
+            return false;
+        }
+
+        Context ctx = ((NBNames) ((Symbol.MethodSymbol)method).name.table.names).getContext();
+        Source source = Source.instance(ctx);
+        Preview preview = Preview.instance(ctx);
+
+        if (source.compareTo(Source.JDK21) < 0 || !preview.isEnabled()) {
+            long flags = ((Symbol.MethodSymbol)method).flags();
+
+            if (((flags & Flags.PUBLIC) == 0) || ((flags & Flags.STATIC) == 0)) {
+                return false;
+            }
+            return !method.getParameters().isEmpty();
+        }
+
+        //new launch prototocol from JEP 445:
+        int currentMethodPriority = mainMethodPriority(method);
+        int highestPriority = Integer.MAX_VALUE;
+
+        for (ExecutableElement sibling : ElementFilter.methodsIn(method.getEnclosingElement().getEnclosedElements())) {
+            if (mainCandidate(sibling)) {
+                highestPriority = Math.min(highestPriority, mainMethodPriority(sibling));
+                if (highestPriority < currentMethodPriority) {
+                    break;
+                }
+            } 
+        }
+
+        return currentMethodPriority == highestPriority;
+    }
+
+    private static boolean mainCandidate(ExecutableElement method) {
         if (!"main".contentEquals(method.getSimpleName())) {                //NOI18N
             return false;
         }
-        long flags = ((Symbol.MethodSymbol)method).flags();                 //faster
-        if (((flags & Flags.PUBLIC) == 0) || ((flags & Flags.STATIC) == 0)) {
+        long flags = ((Symbol.MethodSymbol)method).flags();
+        if ((flags & Flags.PRIVATE) != 0) {
             return false;
         }
         if (method.getReturnType().getKind() != TypeKind.VOID) {
             return false;
         }
         List<? extends VariableElement> params = method.getParameters();
-        if (params.size() != 1) {
+        if (params.size() > 1) {
             return false;
+        } else if (params.size() == 1) {
+            TypeMirror param = params.get(0).asType();
+            if (param.getKind() != TypeKind.ARRAY) {
+                return false;
+            }
+            ArrayType array = (ArrayType) param;
+            TypeMirror compound = array.getComponentType();
+            if (compound.getKind() != TypeKind.DECLARED) {
+                return false;
+            }
+            if (!"java.lang.String".contentEquals(((TypeElement)((DeclaredType)compound).asElement()).getQualifiedName())) {    //NOI18N
+                return false;
+            }
         }
-        TypeMirror param = params.get(0).asType();
-        if (param.getKind() != TypeKind.ARRAY) {
-            return false;
+        return true;
+    }
+
+    // 0 is highest
+    private static int mainMethodPriority(ExecutableElement method) {
+        long flags = ((Symbol.MethodSymbol)method).flags();
+        boolean isStatic = (flags & Flags.STATIC) != 0;
+        boolean hasParams = !method.getParameters().isEmpty();
+        if (isStatic) {
+            return hasParams ? 0 : 1;
+        } else {
+            return hasParams ? 2 : 3;
         }
-        ArrayType array = (ArrayType) param;
-        TypeMirror compound = array.getComponentType();
-        if (compound.getKind() != TypeKind.DECLARED) {
-            return false;
-        }
-        return "java.lang.String".contentEquals(((TypeElement)((DeclaredType)compound).asElement()).getQualifiedName());   //NOI18N
     }
 
     /**
@@ -1127,9 +1189,8 @@ public class SourceUtils {
     }
 
     /**
-     * Returns candidate filenames given a classname. The return value is either
-     * a String (top-level class, no $) or List&lt;String> as the JLS permits $ in
-     * class names.
+     * Returns candidate filenames given a classname.
+     * @return a single name (top-level class, no $) or multiple as the JLS permits $ in class names.
      */
     private static List<String> getSourceFileNames(String classFileName) {
         int index = classFileName.lastIndexOf('$');
@@ -1290,7 +1351,7 @@ public class SourceUtils {
     /**
      * Returns names of all modules within given scope.
      * @param info the CompilationInfo used to resolve modules
-     * @param scope to search in {@see SearchScope}
+     * @param scope to search in {@link ClassIndex.SearchScope}
      * @return set of module names
      * @since 2.23
      */
@@ -1410,5 +1471,46 @@ public class SourceUtils {
             throw new IllegalStateException("Must invoke before running toPhase!");
         }
         cc.addForceSource(file);
+    }
+
+    /**
+     * Computes class name for the corresponding input source file.
+     *
+     * @param info the ClasspathInfo used to resolve
+     * @param relativePath input source file path relative to the corresponding source root
+     * @param nestedClass nested class which name is searched
+     * @return class name for the corresponding input source file
+     * @since 2.74
+     */
+    public static String classNameFor(ClasspathInfo info, String relativePath, NestedClass nestedClass) {
+        ClassPath cachedCP = ClasspathInfoAccessor.getINSTANCE().getCachedClassPath(info, PathKind.COMPILE);
+        int idx = relativePath.indexOf('.');
+        String rel = idx < 0 ? relativePath : relativePath.substring(0, idx);
+        String className = rel.replace('/', '.');
+        int lastDotIndex = className.lastIndexOf('.');
+        String fqnForNestedClass = null;
+        if (lastDotIndex > -1 && nestedClass != null) {
+            String packageName = className.substring(0, lastDotIndex);
+            fqnForNestedClass = nestedClass.getFQN(packageName, "$");
+        }
+        FileObject rsFile = cachedCP.findResource(rel + '.' + FileObjects.RS);
+        if (rsFile != null) {
+            List<String> lines = new ArrayList<>();
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(rsFile.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = in.readLine())!=null) {
+                    if (className.equals(line)) {
+                        return className;
+                    } else if (fqnForNestedClass != null && fqnForNestedClass.equals(line)) {
+                        return line;
+                    }
+                    lines.add(line);
+                }
+            } catch (IOException ioe) {}
+            if (!lines.isEmpty()) {
+                return lines.get(0);
+            }
+        }
+        return className;
     }
 }

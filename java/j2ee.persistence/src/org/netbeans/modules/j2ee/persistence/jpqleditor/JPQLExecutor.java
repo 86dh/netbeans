@@ -101,7 +101,7 @@ public class JPQLExecutor {
             ph.progress(60);
 
             Class pClass = Thread.currentThread().getContextClassLoader().loadClass("javax.persistence.Persistence");//NOI18N
-            javax.persistence.Persistence p = (javax.persistence.Persistence) pClass.newInstance();
+            javax.persistence.Persistence p = (javax.persistence.Persistence) pClass.getDeclaredConstructor().newInstance();
             
             emf = p.createEntityManagerFactory(pu.getName(), props);
 
@@ -116,7 +116,10 @@ public class JPQLExecutor {
             });
             Query query = em.createQuery(jpql);
             String queryStr = null;
-            if (provider.equals(ProviderUtil.ECLIPSELINK_PROVIDER2_0) || provider.equals(ProviderUtil.ECLIPSELINK_PROVIDER)) {//NOI18N
+            if (provider.equals(ProviderUtil.ECLIPSELINK_PROVIDER3_1) 
+                    || provider.equals(ProviderUtil.ECLIPSELINK_PROVIDER2_0)
+                    || provider.equals(ProviderUtil.ECLIPSELINK_PROVIDER2_1)
+                    || provider.equals(ProviderUtil.ECLIPSELINK_PROVIDER2_2)) {
                 Class qClass = Thread.currentThread().getContextClassLoader().loadClass(ECLIPSELINK_QUERY);
                 if (qClass != null) {
                     Method method = qClass.getMethod(ECLIPSELINK_QUERY_SQL0);
@@ -128,7 +131,9 @@ public class JPQLExecutor {
                         }
                     }
                 }
-            } else if (provider.equals(ProviderUtil.HIBERNATE_PROVIDER2_0) || provider.equals(ProviderUtil.HIBERNATE_PROVIDER2_1)) {//NOI18N
+            } else if (provider.equals(ProviderUtil.HIBERNATE_PROVIDER2_0) 
+                    || provider.equals(ProviderUtil.HIBERNATE_PROVIDER2_1)
+                    || provider.equals(ProviderUtil.HIBERNATE_PROVIDER2_2)) {
                 Method method = emf.getClass().getMethod(HIBERNATE_QUERY_SQL0);
                 Object sessionFactoryImpl = method.invoke(emf);
                 Method method2 = sessionFactoryImpl.getClass().getMethod(HIBERNATE_QUERY_SQL1);
@@ -145,15 +150,17 @@ public class JPQLExecutor {
                     }
                 }
                 queryStr = stringBuff.toString();
-            }// else if (provider.getProviderClass().contains("openjpa")){//NOI18N
-//                Class qClass = Thread.currentThread().getContextClassLoader().loadClass(OPENJPA_QUERY);
-//                if(qClass !=null) {
-//                    Method method = qClass.getMethod(OPENJPA_QUERY_SQL);
-//                    if(method != null){
-//                        queryStr = (String) method.invoke(query);
-//                    }
-//                }
-//            } 
+            } else if (provider.equals(ProviderUtil.OPENJPA_PROVIDER2_0) 
+                    || provider.equals(ProviderUtil.OPENJPA_PROVIDER2_1)
+                    || provider.equals(ProviderUtil.OPENJPA_PROVIDER2_2)) {
+                Class qClass = Thread.currentThread().getContextClassLoader().loadClass(OPENJPA_QUERY);
+                if(qClass !=null) {
+                    Method method = qClass.getMethod(OPENJPA_QUERY_SQL);
+                    if(method != null){
+                        queryStr = (String) method.invoke(query);
+                    }
+                }
+            } 
             result.setSqlQuery(queryStr);
             //
             ph.progress(70);

@@ -45,14 +45,14 @@ final class LexerInputCharStream implements CharStream {
         }
         int start = intrvl.a - tokenMark;
         int end = intrvl.b - tokenMark + 1;
-        int toread = end - start - input.readLength();
-        for (int i = 0; i < toread; i++) {
-            input.read();
+        int readCount = 0;
+        int next = 0;
+        while ((end > readLength()) && (next != EOF)) {
+            next = input.read();
+            readCount++;
         }
-        String ret = String.valueOf(input.readText(start, end));
-        if (toread > 0) {
-            input.backup(toread);
-        }
+        String ret = String.valueOf(input.readText(start, Math.min(end, readLength())));
+        input.backup(readCount);
         return ret;
     }
 
@@ -127,6 +127,10 @@ final class LexerInputCharStream implements CharStream {
     @Override
     public int size() {
         throw new UnsupportedOperationException("Stream size is unknown.");
+    }
+
+    int readLength() {
+        return input.readLength();
     }
 
     @Override

@@ -700,6 +700,7 @@ public class JsCompletionItem implements CompletionProposal {
                         case FUNCTION:
                         case METHOD:
                         case GENERATOR:
+                        case ARROW_FUNCTION:
                             Set<String> returnTypes = new HashSet<>();
                             HashMap<String, Set<String>> allParameters = new LinkedHashMap<>();
                             if (element instanceof JsFunction) {
@@ -714,7 +715,7 @@ public class JsCompletionItem implements CompletionProposal {
                                     for (TypeUsage type : jsObject.getAssignmentForOffset(jsObject.getOffset() + 1)) {
                                         Set<String> resolvedType = resolvedTypes.get(type.getType());
                                         if (resolvedType == null) {
-                                            resolvedType = new HashSet(1);
+                                            resolvedType = new HashSet<>(1);
                                             String displayName = ModelUtils.getDisplayName(type);
                                             if (!displayName.isEmpty()) {
                                                 resolvedType.add(displayName);
@@ -742,7 +743,7 @@ public class JsCompletionItem implements CompletionProposal {
                                     for (String type : paramEntry.getValue()) {
                                         Set<String> resolvedType = resolvedTypes.get(type);
                                         if (resolvedType == null) {
-                                            resolvedType = new HashSet(1);
+                                            resolvedType = new HashSet<>(1);
                                             String displayName = ModelUtils.getDisplayName(type);
                                             if (!displayName.isEmpty()) {
                                                 resolvedType.add(displayName);
@@ -790,7 +791,7 @@ public class JsCompletionItem implements CompletionProposal {
                                         if (resolvedType == null) {
                                             toResolve.clear();
                                             toResolve.add(type);
-                                            resolvedType = new HashSet(1);
+                                            resolvedType = new HashSet<>(1);
                                             Collection<TypeUsage> resolved = ModelUtils.resolveTypes(toResolve,
                                                     Model.getModel(request.result, false),
                                                     jsIndex, false);

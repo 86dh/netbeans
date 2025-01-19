@@ -26,7 +26,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.netbeans.api.db.explorer.JDBCDriver;
@@ -322,11 +321,11 @@ public class PersistenceLibrarySupport {
             }
             ClassPath cp = getLibraryClassPath(each);
             Provider provider = extractProvider(cp, providerClass);
-            if (provider != null && containsClass(cp, "javax.persistence.EntityManager")) { //NOI18N
+            if (provider != null && (containsClass(cp, "javax.persistence.EntityManager") || containsClass(cp, "jakarta.persistence.EntityManager"))) { //NOI18N
                 providerLibs.add(new ProviderLibrary(each, cp, provider));
             }
         }
-        Collections.sort(providerLibs, (ProviderLibrary l1, ProviderLibrary l2) -> {
+        providerLibs.sort((ProviderLibrary l1, ProviderLibrary l2) -> {
             String name1 = l1.getLibrary().getDisplayName();
             String name2 = l2.getLibrary().getDisplayName();
             return name1.compareToIgnoreCase(name2);
@@ -345,7 +344,7 @@ public class PersistenceLibrarySupport {
         for (ProviderLibrary each : createLibraries()) {
             providerLibs.add(each.getProvider());
         }
-        Collections.sort(providerLibs, (Provider p1, Provider p2) -> {
+        providerLibs.sort((Provider p1, Provider p2) -> {
             String name1 = p1.getDisplayName();
             String name2 = p2.getDisplayName();
             return name1.compareToIgnoreCase(name2);

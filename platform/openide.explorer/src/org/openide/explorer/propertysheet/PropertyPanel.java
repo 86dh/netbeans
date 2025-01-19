@@ -161,8 +161,6 @@ public class PropertyPanel extends JComponent implements javax.accessibility.Acc
     Object[] beans = null;
     private ReusablePropertyEnv reusableEnv = new ReusablePropertyEnv();
     private ReusablePropertyModel reusableModel = new ReusablePropertyModel(reusableEnv);
-    private final boolean isGtk = "GTK".equals(UIManager.getLookAndFeel().getID()) || //NOI18N
-        (UIManager.getLookAndFeel().getClass().getSuperclass().getName().indexOf("Synth") != -1); //NOI18N
     private boolean ignoreCommit;
 
     /** Creates new PropertyPanel backed by a dummy property  */
@@ -806,8 +804,8 @@ public class PropertyPanel extends JComponent implements javax.accessibility.Acc
      * In such a case, the PropertyModel instance thus obtained <u>will not
      * fire changes</u> due to changes made by calling <code>setValue</code>
      * on the <code>Node.Property</code>.  For details on why this is the case,
-     * see <a href="http://www.netbeans.org/issues/show_bug.cgi?id=37779">issue
-     * 37779</code>.</strong>
+     * see <a href="https://bz.apache.org/netbeans/show_bug.cgi?id=37779">issue
+     * 37779</a>.</strong>
      *
      * @return Either the PropertyModel set in the constructor or via <code>setModel</code>,
      * or a generated instance of PropertyModel which wraps the <code>Node.Property</code>
@@ -948,8 +946,8 @@ public class PropertyPanel extends JComponent implements javax.accessibility.Acc
     }
 
     /** Getter for the state of the property editor. The editor can be in
-     * not valid states just if it implements the <link>ExPropertyEditor</link>
-     * and changes state by the <code>setState</code> method of the <link>PropertyEnv</link>
+     * not valid states just if it implements the {@link ExPropertyEditor}
+     * and changes state by the <code>setState</code> method of the {@link PropertyEnv}
      * environment.
      * <P>
      * @return <code>PropertyEnv.STATE_VALID</code> if the editor is not the <code>ExPropertyEditor</code>
@@ -975,7 +973,7 @@ public class PropertyPanel extends JComponent implements javax.accessibility.Acc
         return PropertyEnv.STATE_VALID;
     }
 
-    /** If the editor is <link>ExPropertyEditor</link> it tries to change the
+    /** If the editor is {@link ExPropertyEditor} it tries to change the
      * <code>getState</code> property to <code>PropertyEnv.STATE_VALID</code>
      * state. This may be vetoed, in such case a warning is presented to the user
      * and the <code>getState</code> will still return the original value
@@ -1151,13 +1149,12 @@ public class PropertyPanel extends JComponent implements javax.accessibility.Acc
     }
 
     /*
-     * Overridden to fill in the background color, since Synth/GTKLookAndFeel ignores
-     * setOpaque(true).
-     * @see http://www.netbeans.org/issues/show_bug.cgi?id=43024
+     * This method is overridden to customize the painting behavior.
+     * It ensures that the background color is filled when setOpaque is true.
      */
     @Override
     public void paint(Graphics g) {
-        if (isGtk) {
+        if (isOpaque()) {
             //Presumably we can get this fixed for JDK 1.5.1
             Color c = getBackground();
 

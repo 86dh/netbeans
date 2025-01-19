@@ -88,13 +88,21 @@ public class ModelUtils {
 
     private static final Logger LOG = Logger.getLogger(ModelUtils.class.getName());
 
+    @SuppressWarnings("AssignmentToMethodParameter")
     public static JsObjectImpl getJsObject (ModelBuilder builder, List<Identifier> fqName, boolean isLHS) {
         if (fqName == null || fqName.isEmpty()) {
             return null;
         }
         JsObject result = builder.getCurrentObject();
-        JsObject tmpObject = null;
         String firstName = fqName.get(0).getName();
+        JsObject tmpObject;
+
+        if (THIS.equals(firstName)) {
+            tmpObject = resolveThis(result);
+            fqName = fqName.subList(1, fqName.size());
+        } else {
+            tmpObject = null;
+        }
 
         while (tmpObject == null && result != null && result.getParent() != null) {
             if (result instanceof JsFunctionImpl) {
@@ -189,7 +197,7 @@ public class ModelUtils {
                 JsElement.Kind kind = property.getJSKind();
                 if (kind == JsElement.Kind.OBJECT || kind == JsElement.Kind.ANONYMOUS_OBJECT || kind == JsElement.Kind.OBJECT_LITERAL
                         || kind == JsElement.Kind.FUNCTION || kind == JsElement.Kind.METHOD || kind == JsElement.Kind.CONSTRUCTOR
-                        || kind == JsElement.Kind.WITH_OBJECT) {
+                        || kind == JsElement.Kind.WITH_OBJECT || kind == JsElement.Kind.ARROW_FUNCTION) {
                     if (!visited.contains(property.getFullyQualifiedName())) {
                         tmpObject = findJsObject(property, offset, visited);
                     }
@@ -629,6 +637,7 @@ public class ModelUtils {
                 parent = object;
             }
         }
+        // @todo: Handle Arrow Function
         if (parent != null && (parent.getJSKind() == JsElement.Kind.FUNCTION || parent.getJSKind() == JsElement.Kind.METHOD)) {
             if (parent.getParent().getJSKind() != JsElement.Kind.FILE) {
                 JsObject grandParent = parent.getParent();
@@ -1760,8 +1769,6 @@ public class ModelUtils {
             while (token.id() != JsTokenId.OPERATOR_SEMICOLON
                     && token.id() != JsTokenId.BRACKET_RIGHT_CURLY && token.id() != JsTokenId.BRACKET_LEFT_CURLY
                     && token.id() != JsTokenId.BRACKET_LEFT_PAREN
-                    && token.id() != JsTokenId.BLOCK_COMMENT
-                    && token.id() != JsTokenId.LINE_COMMENT
                     && token.id() != JsTokenId.OPERATOR_ASSIGNMENT
                     && token.id() != JsTokenId.OPERATOR_PLUS) {
 
@@ -1782,7 +1789,7 @@ public class ModelUtils {
                         }
                     }
                 }
-                if (token.id() != JsTokenId.EOL) {
+                if (token.id() != JsTokenId.WHITESPACE && token.id() != JsTokenId.EOL && token.id() != JsTokenId.BLOCK_COMMENT && token.id() != JsTokenId.LINE_COMMENT) {
                     if (token.id() != JsTokenId.OPERATOR_DOT && token.id() != JsTokenId.OPERATOR_OPTIONAL_ACCESS) {
                         if (token.id() == JsTokenId.BRACKET_RIGHT_PAREN) {
                             parenBalancer++;
@@ -1838,7 +1845,7 @@ public class ModelUtils {
                         wasLastDot = true;
                     }
                 } else {
-                    if (!wasLastDot && ts.movePrevious()) {
+                    if (token.id() != JsTokenId.BLOCK_COMMENT && token.id() != JsTokenId.LINE_COMMENT && !wasLastDot && ts.movePrevious()) {
                         // check whether it's continuatino of previous line
                         token = LexUtilities.findPrevious(ts, Arrays.asList(JsTokenId.WHITESPACE, JsTokenId.BLOCK_COMMENT, JsTokenId.LINE_COMMENT));
                         if (token.id() != JsTokenId.OPERATOR_DOT && token.id() != JsTokenId.OPERATOR_OPTIONAL_ACCESS) {

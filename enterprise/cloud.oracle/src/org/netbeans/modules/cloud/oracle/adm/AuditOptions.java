@@ -25,11 +25,15 @@ import org.netbeans.modules.cloud.oracle.OCISessionInitiator;
  *
  * @author sdedic
  */
-public class AuditOptions {
+public final class AuditOptions {
     private boolean forceAuditExecution;
     private boolean runIfNotExists;
+    private boolean disableCache;
     private String auditName;
     private OCISessionInitiator session;
+    private boolean returnData;
+    private boolean displaySummary = true;
+    private boolean supressErrors = false;
     
     public static AuditOptions makeNewAudit() {
         return new AuditOptions().setForceAuditExecution(true).setRunIfNotExists(true);
@@ -44,6 +48,15 @@ public class AuditOptions {
         return this;
     }
 
+    public boolean isDisableCache() {
+        return disableCache;
+    }
+
+    public AuditOptions setDisableCache(boolean disableCache) {
+        this.disableCache = disableCache;
+        return this;
+    }
+    
     public boolean isRunIfNotExists() {
         return runIfNotExists;
     }
@@ -67,7 +80,35 @@ public class AuditOptions {
         return this;
     }
 
-    public OCISessionInitiator getSession() {
-        return session != null ? session : OCIManager.getDefault().getActiveSession();
+    /**
+     * @return true, if data structure should be returned instead of just error/OK
+     */
+    public boolean isReturnData() {
+        return returnData;
+    }
+
+    public void setReturnData(boolean returnData) {
+        this.returnData = returnData;
+    }
+
+    /**
+     * @return True if the audit code should notify the user with a summary message.
+     * False otherwise.
+     */
+    public boolean isDisplaySummary() {
+        return displaySummary;
+    }
+
+    public void setDisplaySummary(boolean displaySummary) {
+        this.displaySummary = displaySummary;
+    }
+
+    public boolean isSupressErrors() {
+        return supressErrors;
+    }
+
+    public void setSupressErrors(boolean supressErrors) {
+        this.supressErrors = supressErrors;
     }
 }
+

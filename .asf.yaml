@@ -29,13 +29,20 @@ github:
     wiki: false
     issues: true
     projects: true
+  dependabot_alerts: false
+  dependabot_updates: false
   enabled_merge_buttons:
-    squash:  true
+    squash:  false
     merge:   true
     rebase:  true
   protected_branches:
     # no force push to master
     master: {}
+  collaborators:
+    - petrovic-d
+    - Achal1607
+    - asbachb
+    - troizet
 
 notifications:
     commits:      commits@netbeans.apache.org

@@ -272,7 +272,7 @@ public final class J2eePlatform implements Lookup.Provider {
     public File[] getClasspathEntries() {
         if (classpathCache == null) {
             List<File> classpath = getClasspath(impl.getLibraries());
-            classpathCache = (File[]) classpath.toArray(new File[classpath.size()]);
+            classpathCache = (File[]) classpath.toArray(new File[0]);
         }
         return classpathCache;
     }
@@ -281,7 +281,7 @@ public final class J2eePlatform implements Lookup.Provider {
     public File[] getClasspathEntries(Set<ServerLibraryDependency> libraries) {
         // FIXME optimize - cache
         List<File> classpath = getClasspath(impl.getLibraries(libraries));
-        return (File[]) classpath.toArray(new File[classpath.size()]);
+        return (File[]) classpath.toArray(new File[0]);
     }
     
     private List<File> getClasspath(LibraryImplementation[] libraries) {
@@ -479,7 +479,7 @@ public final class J2eePlatform implements Lookup.Provider {
      * @param moduleType one of the constants defined in
      *   {@link org.netbeans.modules.j2ee.deployment.devmodules.api.J2eeModule}
      * @return list of supported J2EE specification versions.
-     * @deprecated use {@link #getSupportedProfiles(java.lang.Object)}
+     * @deprecated use {@link #getSupportedProfiles(Type)}
      */
     @Deprecated
     public Set<String> getSupportedSpecVersions(Object moduleType) {
@@ -513,9 +513,9 @@ public final class J2eePlatform implements Lookup.Provider {
 
     /**
      * Returns the set of supported profiles (terminology of Java EE 6) for
-     * the given module type (one of {@link J2eeModule#EAR},
-     * {@link J2eeModule#EJB}, {@link J2eeModule#WAR}, {@link J2eeModule#RAR}
-     * and {@link J2eeModule#CAR}).
+     * the given module type (one of {@link J2eeModule.Type#EAR},
+     * {@link J2eeModule.Type#EJB}, {@link J2eeModule.Type#WAR}, {@link J2eeModule.Type#RAR}
+     * and {@link J2eeModule.Type#CAR}).
      *
      * @param moduleType type of the module
      * @return set of {@link Profile}s supported by the server.
@@ -711,7 +711,6 @@ public final class J2eePlatform implements Lookup.Provider {
     /**
      * Lookup providing a way to find non mandatory technologies supported
      * by the platform.
-     * <p>
      * <div class="nonnormative">
      * The typical example of such support is a webservice stack.
      * </div>
@@ -775,7 +774,7 @@ public final class J2eePlatform implements Lookup.Provider {
                 }
             }
         }
-        return ret.toArray(new FileObject[ret.size()]);
+        return ret.toArray(new FileObject[0]);
     }
 
     private void copyFiles(Map<FileObject, String> copied, Map<String, Integer> usedNames,
@@ -796,7 +795,7 @@ public final class J2eePlatform implements Lookup.Provider {
             }
         }
         copyFiles(copied, usedNames, jarFolder, folderName,
-                fileObjects.toArray(new FileObject[fileObjects.size()]), content);
+                fileObjects.toArray(new FileObject[0]), content);
     }
 
     private void copyFiles(Map<FileObject, String> copied, Map<String, Integer> usedNames,

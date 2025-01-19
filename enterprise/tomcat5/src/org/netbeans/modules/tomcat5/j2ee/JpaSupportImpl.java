@@ -28,7 +28,8 @@ import org.netbeans.modules.tomcat5.deploy.TomcatManager;
 /**
  * This is TomEE only class. TomEE PluME support two implementations: {@code OpenJPA}
  * and {@code EclipseLink}, </p> every other TomEE flavor only support {@code OpenJPA}
- * @author Petr Hejl, José Contreras
+ * @author Petr Hejl
+ * @author José Contreras
  */
 class JpaSupportImpl implements JpaSupportImplementation {
 
@@ -48,7 +49,11 @@ class JpaSupportImpl implements JpaSupportImplementation {
                     true, 
                     instance.isJpa10(), 
                     instance.isJpa20(), 
-                    instance.isJpa21());
+                    instance.isJpa21(),
+                    instance.isJpa22(),
+                    instance.isJpa30(),
+                    instance.isJpa31(),
+                    instance.isJpa32());
     }
 
     @Override
@@ -59,7 +64,11 @@ class JpaSupportImpl implements JpaSupportImplementation {
                 true, 
                 instance.isJpa10(), 
                 instance.isJpa20(), 
-                instance.isJpa21()));
+                instance.isJpa21(),
+                instance.isJpa22(),
+                instance.isJpa30(),
+                instance.isJpa31(),
+                instance.isJpa32()));
         // TomEE PluME has Eclipselink and OpenJPA
         if (instance.isTomEEplume()) {
             providers.add(JpaProviderFactory.createJpaProvider(
@@ -67,7 +76,11 @@ class JpaSupportImpl implements JpaSupportImplementation {
                     true, 
                     instance.isJpa10(), 
                     instance.isJpa20(), 
-                    instance.isJpa21()));
+                    instance.isJpa21(),
+                    instance.isJpa22(),
+                    instance.isJpa30(),
+                    instance.isJpa31(),
+                    instance.isJpa32()));
         }
         return providers;
     }

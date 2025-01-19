@@ -114,6 +114,7 @@ public class LanguageClientImpl implements LanguageClient, Endpoint {
 
     private final Map<Object, ProgressHandle> key2Progress = new HashMap<>();
 
+    @Override
     public void notifyProgress(ProgressParams params) {
         Either<WorkDoneProgressNotification, Object> value = params.getValue();
         if (value.isRight()) {
@@ -163,8 +164,9 @@ public class LanguageClientImpl implements LanguageClient, Endpoint {
             if (doc == null) {
                 return ; //ignore...
             }
+            assert file != null;
             List<ErrorDescription> diags = pdp.getDiagnostics().stream().map(d -> {
-                LazyFixList fixList = allowCodeActions ? new DiagnosticFixList(pdp.getUri(), d) : ErrorDescriptionFactory.lazyListForFixes(Collections.emptyList());
+                LazyFixList fixList = allowCodeActions ? new DiagnosticFixList(doc, pdp.getUri(), d) : ErrorDescriptionFactory.lazyListForFixes(Collections.emptyList());
                 return ErrorDescriptionFactory.createErrorDescription(severityMap.get(d.getSeverity()), d.getMessage(), fixList, file, Utils.getOffset(doc, d.getRange().getStart()), Utils.getOffset(doc, d.getRange().getEnd()));
             }).collect(Collectors.toList());
             HintsController.setErrors(doc, LanguageClientImpl.class.getName(), diags);
@@ -285,11 +287,13 @@ public class LanguageClientImpl implements LanguageClient, Endpoint {
         return result;
     }
 
+    @Override
     public CompletableFuture<?> request(String method, Object parameter) {
         LOG.log(Level.WARNING, "Received unhandled request: {0}: {1}", new Object[] {method, parameter});
         return CompletableFuture.completedFuture(null);
     }
 
+    @Override
     public void notify(String method, Object parameter) {
         LOG.log(Level.WARNING, "Received unhandled notification: {0}: {1}", new Object[] {method, parameter});
     }
@@ -298,12 +302,14 @@ public class LanguageClientImpl implements LanguageClient, Endpoint {
 
         private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
         private final String fileUri;
+        private final Document doc;
         private final Diagnostic diagnostic;
         private List<Fix> fixes;
         private boolean computing;
         private boolean computed;
 
-        public DiagnosticFixList(String fileUri, Diagnostic diagnostic) {
+        public DiagnosticFixList(Document doc, String fileUri, Diagnostic diagnostic) {
+            this.doc = doc;
             this.fileUri = fileUri;
             this.diagnostic = diagnostic;
         }
@@ -324,27 +330,36 @@ public class LanguageClientImpl implements LanguageClient, Endpoint {
         }
 
         @Override
+        @SuppressWarnings("ReturnOfCollectionOrArrayField")
         public synchronized List<Fix> getFixes() {
             if (!computing && !computed) {
                 computing = true;
                 bindings.runOnBackground(() -> {
                     try {
-                        List<Either<Command, CodeAction>> commands =
-                                bindings.getTextDocumentService().codeAction(new CodeActionParams(new TextDocumentIdentifier(fileUri),
-                                        diagnostic.getRange(),
-                                        new CodeActionContext(Collections.singletonList(diagnostic)))).get();
-                        List<Fix> fixes = commands.stream()
-                                                  .map(cmd -> new CommandBasedFix(cmd))
-                                                  .collect(Collectors.toList());
+                        List<Fix> newFixes = Collections.emptyList();
+
+                        if (Utils.getOffset(doc, diagnostic.getRange().getEnd()) < doc.getEndPosition().getOffset()) {
+                            List<Either<Command, CodeAction>> commands
+                                    = bindings.getTextDocumentService().codeAction(new CodeActionParams(new TextDocumentIdentifier(fileUri),
+                                            diagnostic.getRange(),
+                                            new CodeActionContext(Collections.singletonList(diagnostic)))).get();
+
+                            if (commands != null) {
+                                newFixes = commands.stream()
+                                        .map(cmd -> new CommandBasedFix(cmd))
+                                        .collect(Collectors.toList());
+                            }
+                        }
+
                         synchronized (this) {
-                            this.fixes = Collections.unmodifiableList(fixes);
+                            this.fixes = Collections.unmodifiableList(newFixes);
                             this.computed = true;
                             this.computing = false;
                         }
                         pcs.firePropertyChange(PROP_COMPUTED, null, null);
                         pcs.firePropertyChange(PROP_FIXES, null, null);
                     } catch (InterruptedException | ExecutionException ex) {
-                        Exceptions.printStackTrace(ex);
+                        LOG.log(Level.INFO, "Failure fetching DiagnosticFixList (at least typescript server has known problems)", ex);
                     }
                 });
             }

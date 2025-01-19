@@ -485,10 +485,42 @@ public enum NodeType {
     // definitions to handle variable syntax
     , preservedToken
     , preservedTokenTopLevel
+    // {} block
+    , braceBlock2
+    // simple brace block
     , braceBlock
     , bracketBlock
     , parenBlock
     , componentValue
     , componentValueOuter
+    // @layer rule
+    , layerAtRule
+    , importLayer
+    , layerName
+    , layerBody
+    , layerStatement
+    , layerBlock
+    // @container
+    , containerAtRule
+    , containerCondition
+    , containerQueryWithOperator
+    , containerQueryConjunction
+    , containerQueryDisjunction
+    , containerQueryInParens
+    , containerName
+    , styleQuery
+    , styleCondition
+    , styleConditionWithOperator
+    , styleQueryConjunction
+    , styleQueryDisjunction
+    , styleInParens
+    , sizeFeature
+    , sizeFeatureName
+    , sizeFeatureValue
+    , styleFeature
+    , sizeFeatureFixedValue
+    , sizeFeatureRangeSingle
+    , sizeFeatureRangeBetweenLt
+    , sizeFeatureRangeBetweenGt
     ;
 }
